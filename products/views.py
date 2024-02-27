@@ -71,9 +71,6 @@ def create_order(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-import stripe
-
-
 @csrf_exempt
 def order_payment(request):
     try:
