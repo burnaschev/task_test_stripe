@@ -10,7 +10,7 @@ stripe.com/docs - платёжная система с подробным API и
 - stripe
 - docker
 - docker-compose
-- 
+
 ## Эндпоинты
 
 - /buy/{id} c помощью которого можно получить Stripe Session Id для оплаты выбранного продукта.
