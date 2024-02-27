@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание заказа</title>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+<h1>Создание заказа</h1>
+<form id="order-form" method="post" action="{% url 'products:create_order' %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <ul>
+        <h4>Список продуктов:</h4>
+        {% for product in products %}
+            <li>
+                <input type="checkbox" id="product_{{ product.id }}" name="items" value="{{ product.id }}"
+                       {% if product in order.items.all %}checked{% endif %}>
+                <label for="product_{{ product.id }}">{{ product.name }}</label>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <p>Общая сумма: <span id="total-amount">{{ order.total_amount }} {{ order.currency }}</span></p>
+
+    <input type="hidden" name="session_id" id="session_id" value="{{ session_id }}">
+
+    <input type="submit" id="save-order-btn" value="Сохранить заказ">
+</form>
+
+<form id="payment-form" method="get" action="{% url 'products:payment_order' %}">
+    <input type="submit" value="Оплатить заказ">
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('order-form');
+        const saveButton = document.getElementById('save-order-btn');
+        const paymentForm = document.getElementById('payment-form');
+
+        saveButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: new FormData(form)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Заказ успешно сохранен!');
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        paymentForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            fetch(paymentForm.action, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const stripe = Stripe('{{ STRIPE_PUBLIC_KEY }}');
+                    stripe.redirectToCheckout({sessionId: data.session_id})
+                        .then(function (result) {
+                            if (result.error) {
+                                console.error(result.error.message);
+                            }
+                        });
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        const checkboxes = document.querySelectorAll('input[name="items"]');
+        const totalAmountField = document.querySelector('#total-amount');
+
+        checkboxes.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                fetch('/toggle_item/' + this.value + '/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        totalAmountField.textContent = data.total_amount;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+        });
+    });
+</script>
+</body>
+</html>
